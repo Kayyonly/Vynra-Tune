@@ -229,3 +229,51 @@ export const usePlayerStore = create<PlayerState>()(
     }
   )
 );
+
+
+export interface PlaylistItem {
+  id: string;
+  name: string;
+  description?: string;
+  img: string;
+  tracks: Track[];
+  isPublic?: boolean;
+}
+
+interface PlaylistState {
+  playlists: PlaylistItem[];
+  currentPlaylist: PlaylistItem | null;
+  setPlaylists: (playlists: PlaylistItem[]) => void;
+  setCurrentPlaylist: (playlist: PlaylistItem | null) => void;
+  upsertPlaylist: (playlist: PlaylistItem) => void;
+}
+
+export const usePlaylistStore = create<PlaylistState>()(
+  persist(
+    (set) => ({
+      playlists: [],
+      currentPlaylist: null,
+      setPlaylists: (playlists) => set({ playlists }),
+      setCurrentPlaylist: (playlist) => set({ currentPlaylist: playlist }),
+      upsertPlaylist: (playlist) =>
+        set((state) => {
+          const exists = state.playlists.some((item) => item.id === playlist.id);
+          if (exists) {
+            return {
+              playlists: state.playlists.map((item) => (item.id === playlist.id ? playlist : item)),
+              currentPlaylist: playlist,
+            };
+          }
+
+          return {
+            playlists: [playlist, ...state.playlists],
+            currentPlaylist: playlist,
+          };
+        }),
+    }),
+    {
+      name: 'playlist-storage',
+      partialize: (state) => ({ playlists: state.playlists }),
+    },
+  ),
+);
