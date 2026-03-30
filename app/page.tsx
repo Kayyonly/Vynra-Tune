@@ -5,6 +5,7 @@ import { Track, usePlayerStore } from '@/lib/store';
 import { Loader2, History, Cast, User, Play, MoreVertical } from 'lucide-react';
 import Image from 'next/image';
 import { HorizontalScroll } from '@/components/HorizontalScroll';
+import { MixedScroll } from '@/components/MixedScroll';
 import { CommunityPlaylistCard } from '@/components/CommunityPlaylistCard';
 import { MarqueeText } from '@/components/MarqueeText';
 import { getHighResImage } from '@/lib/utils';
@@ -21,7 +22,7 @@ export default function Home() {
   const [quickPicksTracks, setQuickPicksTracks] = useState<Track[]>([]);
   const [communityPlaylists, setCommunityPlaylists] = useState<any[]>([]);
   const [artists, setArtists] = useState<any[]>([]);
-  const [categories, setCategories] = useState<{ title: string; tracks: Track[] }[]>([]);
+  const [categories, setCategories] = useState<{ key: string; title: string; type: 'song' | 'mixed'; items: any[] }[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [filterData, setFilterData] = useState<{ title: string; tracks: Track[] }[]>([]);
@@ -72,6 +73,9 @@ export default function Home() {
         const defaultCategories = [
           { key: 'cat0', title: 'Trending Now', q: 'lagu indonesia hits terbaru', type: 'song' },
           { key: 'cat1', title: 'New Releases', q: 'lagu pop indonesia rilis terbaru', type: 'song' },
+          { key: 'similar0', title: 'Serupa dengan Ryuuuchiee', q: 'Ryuuuchiee', type: 'all' },
+          { key: 'similar1', title: 'Serupa dengan Tems', q: 'Tems', type: 'all' },
+          { key: 'similar2', title: 'Serupa dengan Hindia', q: 'Hindia', type: 'all' },
           { key: 'cat2', title: 'Top 50 Indonesia', q: 'top 50 indonesia playlist update', type: 'song' },
           { key: 'cat3', title: 'Viral on TikTok', q: 'lagu fyp tiktok viral', type: 'song' },
           { key: 'cat4', title: 'For Eid Getaways', q: 'lagu lebaran idul fitri', type: 'song' },
@@ -105,7 +109,7 @@ export default function Home() {
           results.push(...chunkResults);
         }
 
-        const cats: { title: string; tracks: Track[] }[] = [];
+        const cats: { key: string; title: string; type: 'song' | 'mixed'; items: any[] }[] = [];
 
         results.forEach(({ key, title, data }) => {
           if (!data || data.length === 0) return;
@@ -114,8 +118,13 @@ export default function Home() {
           else if (key === 'quickPicks') setQuickPicksTracks(data.slice(0, 20));
           else if (key === 'community') setCommunityPlaylists(data.slice(0, 10));
           else if (key === 'artists') setArtists(data.slice(0, 10));
-          else if (key.startsWith('cat') && title) cats.push({ title, tracks: data.slice(0, 10) });
+          else if (key.startsWith('cat') && title) cats.push({ key, title, type: 'song', items: data.slice(0, 10) });
+          else if (key.startsWith('similar') && title) cats.push({ key, title, type: 'mixed', items: data.slice(0, 10) });
         });
+
+        // Sort categories to maintain the order defined in defaultCategories
+        const orderMap = new Map(defaultCategories.map((c, i) => [c.key, i]));
+        cats.sort((a, b) => (orderMap.get(a.key) ?? 999) - (orderMap.get(b.key) ?? 999));
 
         setCategories(cats);
       } catch (error) {
@@ -365,7 +374,11 @@ export default function Home() {
           )}
 
           {categories.map((cat, i) => (
-            <HorizontalScroll key={i} title={cat.title} tracks={cat.tracks} />
+            cat.type === 'mixed' ? (
+              <MixedScroll key={i} title={cat.title} items={cat.items} />
+            ) : (
+              <HorizontalScroll key={i} title={cat.title} tracks={cat.items} />
+            )
           ))}
         </div>
       )}
