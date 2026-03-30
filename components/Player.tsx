@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import LyricsClient from '@/components/LyricsClient';
 import { usePlayerStore } from '@/lib/store';
 import { db } from '@/lib/db';
 import YouTube from 'react-youtube';
@@ -28,36 +29,14 @@ export function Player() {
   const dominantColor = usePlayerStore((state) => state.dominantColor);
 
   const [isLiked, setIsLiked] = useState(false);
-  const [lyrics, setLyrics] = useState<{ text: string }[] | null>(null);
   const [showLyrics, setShowLyrics] = useState(false);
   const playerRef = useRef<any>(null);
-
-  // Reset lyrics when track changes
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLyrics(null);
-  }, [currentTrack?.videoId]);
 
   useEffect(() => {
     if (currentTrack) {
       db.isLiked(currentTrack.videoId).then(setIsLiked);
     }
   }, [currentTrack]);
-
-  useEffect(() => {
-    if (currentTrack && showLyrics && !lyrics) {
-      fetch(`/api/lyrics?id=${currentTrack.videoId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.lyrics && data.lyrics.lyrics) {
-            setLyrics([{ text: data.lyrics.lyrics || data.lyrics }]);
-          } else {
-            setLyrics(null);
-          }
-        })
-        .catch(() => setLyrics(null));
-    }
-  }, [currentTrack, showLyrics, lyrics]);
 
   const handleLike = useCallback(async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -357,18 +336,8 @@ export function Player() {
                   </div>
                 )}
                 {showLyrics ? (
-                  <div className="flex-1 overflow-y-auto no-scrollbar pb-8 z-10">
-                    {lyrics ? (
-                      <div className="text-2xl font-bold leading-relaxed text-white/90 space-y-6 text-center px-4">
-                        {lyrics.map((line, i) => (
-                          <p key={i} className="whitespace-pre-wrap drop-shadow-lg">{line.text}</p>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-white/50 text-lg">
-                        Lyrics not available
-                      </div>
-                    )}
+                  <div className="flex-1 pb-8 z-10">
+                    <LyricsClient track={currentTrack} />
                   </div>
                 ) : (
                   <AnimatePresence mode="wait">
