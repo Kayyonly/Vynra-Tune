@@ -75,6 +75,7 @@ export function Player() {
         setPlaying(false);
       }
       pauseRequestedRef.current = false;
+      setPlaying(false);
     } else if (event.data === YouTube.PlayerState.ENDED) {
       playNext();
     }
@@ -85,7 +86,6 @@ export function Player() {
     setPlaying(true);
     playerRef.current?.playVideo?.();
   }, [setPlaying]);
-
   const handleMediaPause = useCallback(() => {
     pauseRequestedRef.current = true;
     setPlaying(false);
