@@ -336,6 +336,7 @@ export function Player() {
                 )}
                 {showLyrics ? (
                   <div className="flex-1 pb-8 z-10">
+                    <LyricsClient track={currentTrack} />
                     <LyricsClient track={currentTrack} currentTime={progress} isPlaying={isPlaying} />
                   </div>
                 ) : (
