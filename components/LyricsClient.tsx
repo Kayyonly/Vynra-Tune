@@ -141,7 +141,19 @@ export default function LyricsClient({ track, currentTime, isPlaying }: LyricsCl
                 </p>
               );
             })}
-          </div>
+          <div className="space-y-2 text-sm leading-6 text-white/85 whitespace-pre-wrap">
+            {lines.length > 0 ? (
+              lines.map((line, index) => (
+                <p
+                  key={`${line}-${index}`}
+                  className={index === 0 ? 'text-white font-medium' : 'text-white/70'}
+                >
+                  {line}
+                </p>
+              ))
+            ) : (
+              <p className="text-white/60">{FALLBACK_LYRICS}</p>
+            )}          </div>
         )}
       </motion.div>
     </AnimatePresence>

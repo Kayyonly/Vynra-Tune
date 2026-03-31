@@ -120,7 +120,6 @@ export async function GET(request: Request) {
 
     const lyricsPayload = await (ytmusic as any).constructRequest('browse', { browseId });
     const lyricsText = parseLyricsText(lyricsPayload);
-
     if (!lyricsText) {
       return NextResponse.json(FALLBACK);
     }
@@ -129,5 +128,18 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error(`Lyrics API failed for id ${id}:`, error);
     return NextResponse.json(FALLBACK);
+    return NextResponse.json(
+      { lyrics: lyricsText },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=86400',
+        },
+      },
+    );
+  } catch (error) {
+    console.error(`Lyrics API failed for id ${id}:`, error);
+    return NextResponse.json(FALLBACK, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while
   }
 }
