@@ -10,6 +10,7 @@ import { Play, Pause, SkipForward, SkipBack, Heart, ChevronDown, ListMusic, Mic2
 import { cn, getHighResImage } from '@/lib/utils';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useMediaSession } from '@/hooks/useMediaSession';
 
 export function Player() {
   const router = useRouter();
@@ -62,17 +63,32 @@ export function Player() {
       const duration = await event.target.getDuration();
       setDuration(duration || 0);
     } else if (event.data === YouTube.PlayerState.PAUSED) {
-      if (usePlayerStore.getState().isPlaying) {
-        // Browser likely paused it automatically (e.g., app went to background)
-        // Force it to play again to maintain background playback
-        event.target.playVideo();
-      } else {
-        setPlaying(false);
-      }
+      setPlaying(false);
     } else if (event.data === YouTube.PlayerState.ENDED) {
       playNext();
     }
   }, [setPlaying, setDuration, playNext]);
+
+  const handleMediaPlay = useCallback(() => {
+    setPlaying(true);
+    playerRef.current?.playVideo?.();
+  }, [setPlaying]);
+
+  const handleMediaPause = useCallback(() => {
+    setPlaying(false);
+    playerRef.current?.pauseVideo?.();
+  }, [setPlaying]);
+
+  useMediaSession({
+    track: currentTrack,
+    isPlaying,
+    onPlay: handleMediaPlay,
+    onPause: handleMediaPause,
+    onPrev: playPrev,
+    onNext: () => {
+      void playNext();
+    },
+  });
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -88,46 +104,11 @@ export function Player() {
   }, [isPlaying, setProgress]);
 
   useEffect(() => {
-    if (currentTrack && 'mediaSession' in navigator) {
-      const thumbnail = getHighResImage(currentTrack.thumbnails?.[currentTrack.thumbnails.length - 1]?.url, 800);
-      const artistName = Array.isArray(currentTrack.artist) ? currentTrack.artist.map(a => a.name).join(', ') : currentTrack.artist?.name || 'Unknown Artist';
-      
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentTrack.name,
-        artist: artistName,
-        album: 'Music App',
-        artwork: [
-          { src: thumbnail, sizes: '512x512', type: 'image/jpeg' }
-        ]
-      });
-
-      navigator.mediaSession.setActionHandler('play', () => {
-        setPlaying(true);
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        setPlaying(false);
-      });
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        playPrev();
-      });
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        playNext();
-      });
-    }
-  }, [currentTrack, setPlaying, playNext, playPrev]);
-
-  useEffect(() => {
     if (playerRef.current) {
       if (isPlaying) {
         playerRef.current.playVideo();
-        if ('mediaSession' in navigator) {
-          navigator.mediaSession.playbackState = 'playing';
-        }
       } else {
         playerRef.current.pauseVideo();
-        if ('mediaSession' in navigator) {
-          navigator.mediaSession.playbackState = 'paused';
-        }
       }
     }
   }, [isPlaying]);
