@@ -140,6 +140,6 @@ export async function GET(request: Request) {
     console.error(`Lyrics API failed for id ${id}:`, error);
     return NextResponse.json(FALLBACK, {
       headers: {
-        'Cache-Control': 'public, s-maxage=300, stale-while
+        'Cache-Control': 'public, s-maxage=300, stale-while'
   }
 }
