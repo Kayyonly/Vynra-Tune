@@ -43,6 +43,11 @@ export async function GET(request: Request) {
       return NextResponse.json(videos, { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } });
     }
 
+    if (type === 'all') {
+      const results = await ytmusic.search(query).catch(e => { console.error('Error searching all:', e.name === 'ZodError' ? 'ZodError' : e); return []; });
+      return NextResponse.json(results, { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } });
+    }
+
     // If no type is specified, search sequentially to avoid 403 errors from too many parallel requests
     const songs = await ytmusic.searchSongs(query).catch(e => { console.error('Error searching songs:', e.name === 'ZodError' ? 'ZodError' : e); return []; });
     const videos = await ytmusic.searchVideos(query).catch(e => { console.error('Error searching videos:', e.name === 'ZodError' ? 'ZodError' : e); return []; });
