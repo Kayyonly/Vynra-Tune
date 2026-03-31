@@ -32,6 +32,7 @@ export function Player() {
   const [isLiked, setIsLiked] = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
   const playerRef = useRef<any>(null);
+  const pauseRequestedRef = useRef(false);
 
   useEffect(() => {
     if (currentTrack) {
@@ -55,6 +56,10 @@ export function Player() {
     playerRef.current = event.target;
     const duration = await event.target.getDuration();
     setDuration(duration || 0);
+
+    if (usePlayerStore.getState().isPlaying) {
+      event.target.playVideo();
+    }
   }, [setDuration]);
 
   const onStateChange = useCallback(async (event: any) => {
@@ -63,6 +68,13 @@ export function Player() {
       const duration = await event.target.getDuration();
       setDuration(duration || 0);
     } else if (event.data === YouTube.PlayerState.PAUSED) {
+      const shouldBePlaying = usePlayerStore.getState().isPlaying;
+      if (!pauseRequestedRef.current && shouldBePlaying) {
+        event.target.playVideo();
+      } else {
+        setPlaying(false);
+      }
+      pauseRequestedRef.current = false;
       setPlaying(false);
     } else if (event.data === YouTube.PlayerState.ENDED) {
       playNext();
@@ -70,11 +82,12 @@ export function Player() {
   }, [setPlaying, setDuration, playNext]);
 
   const handleMediaPlay = useCallback(() => {
+    pauseRequestedRef.current = false;
     setPlaying(true);
     playerRef.current?.playVideo?.();
   }, [setPlaying]);
-
   const handleMediaPause = useCallback(() => {
+    pauseRequestedRef.current = true;
     setPlaying(false);
     playerRef.current?.pauseVideo?.();
   }, [setPlaying]);
@@ -186,6 +199,11 @@ export function Player() {
     }
   };
 
+  const handleTogglePlay = () => {
+    pauseRequestedRef.current = isPlaying;
+    togglePlay();
+  };
+
   if (!currentTrack) return null;
 
   const thumbnail = getHighResImage(currentTrack.thumbnails?.[currentTrack.thumbnails.length - 1]?.url, 800);
@@ -261,7 +279,7 @@ export function Player() {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  togglePlay();
+                  handleTogglePlay();
                 }}
                 className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-colors"
               >
@@ -387,7 +405,7 @@ export function Player() {
                     <SkipBack className="w-10 h-10 fill-current" />
                   </button>
                   <button
-                    onClick={togglePlay}
+                    onClick={handleTogglePlay}
                     className="w-20 h-20 flex items-center justify-center bg-white text-black rounded-full hover:scale-105 transition-transform"
                   >
                     {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current ml-1" />}
