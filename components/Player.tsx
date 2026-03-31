@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import LyricsClient from '@/components/LyricsClient';
 import { usePlayerStore } from '@/lib/store';
 import { db } from '@/lib/db';
 import YouTube from 'react-youtube';
@@ -9,6 +10,7 @@ import { Play, Pause, SkipForward, SkipBack, Heart, ChevronDown, ListMusic, Mic2
 import { cn, getHighResImage } from '@/lib/utils';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useMediaSession } from '@/hooks/useMediaSession';
 
 export function Player() {
   const router = useRouter();
@@ -28,36 +30,14 @@ export function Player() {
   const dominantColor = usePlayerStore((state) => state.dominantColor);
 
   const [isLiked, setIsLiked] = useState(false);
-  const [lyrics, setLyrics] = useState<{ text: string }[] | null>(null);
   const [showLyrics, setShowLyrics] = useState(false);
   const playerRef = useRef<any>(null);
-
-  // Reset lyrics when track changes
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLyrics(null);
-  }, [currentTrack?.videoId]);
 
   useEffect(() => {
     if (currentTrack) {
       db.isLiked(currentTrack.videoId).then(setIsLiked);
     }
   }, [currentTrack]);
-
-  useEffect(() => {
-    if (currentTrack && showLyrics && !lyrics) {
-      fetch(`/api/lyrics?id=${currentTrack.videoId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.lyrics && data.lyrics.lyrics) {
-            setLyrics([{ text: data.lyrics.lyrics || data.lyrics }]);
-          } else {
-            setLyrics(null);
-          }
-        })
-        .catch(() => setLyrics(null));
-    }
-  }, [currentTrack, showLyrics, lyrics]);
 
   const handleLike = useCallback(async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -83,17 +63,32 @@ export function Player() {
       const duration = await event.target.getDuration();
       setDuration(duration || 0);
     } else if (event.data === YouTube.PlayerState.PAUSED) {
-      if (usePlayerStore.getState().isPlaying) {
-        // Browser likely paused it automatically (e.g., app went to background)
-        // Force it to play again to maintain background playback
-        event.target.playVideo();
-      } else {
-        setPlaying(false);
-      }
+      setPlaying(false);
     } else if (event.data === YouTube.PlayerState.ENDED) {
       playNext();
     }
   }, [setPlaying, setDuration, playNext]);
+
+  const handleMediaPlay = useCallback(() => {
+    setPlaying(true);
+    playerRef.current?.playVideo?.();
+  }, [setPlaying]);
+
+  const handleMediaPause = useCallback(() => {
+    setPlaying(false);
+    playerRef.current?.pauseVideo?.();
+  }, [setPlaying]);
+
+  useMediaSession({
+    track: currentTrack,
+    isPlaying,
+    onPlay: handleMediaPlay,
+    onPause: handleMediaPause,
+    onPrev: playPrev,
+    onNext: () => {
+      void playNext();
+    },
+  });
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -109,46 +104,11 @@ export function Player() {
   }, [isPlaying, setProgress]);
 
   useEffect(() => {
-    if (currentTrack && 'mediaSession' in navigator) {
-      const thumbnail = getHighResImage(currentTrack.thumbnails?.[currentTrack.thumbnails.length - 1]?.url, 800);
-      const artistName = Array.isArray(currentTrack.artist) ? currentTrack.artist.map(a => a.name).join(', ') : currentTrack.artist?.name || 'Unknown Artist';
-      
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentTrack.name,
-        artist: artistName,
-        album: 'Music App',
-        artwork: [
-          { src: thumbnail, sizes: '512x512', type: 'image/jpeg' }
-        ]
-      });
-
-      navigator.mediaSession.setActionHandler('play', () => {
-        setPlaying(true);
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        setPlaying(false);
-      });
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        playPrev();
-      });
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        playNext();
-      });
-    }
-  }, [currentTrack, setPlaying, playNext, playPrev]);
-
-  useEffect(() => {
     if (playerRef.current) {
       if (isPlaying) {
         playerRef.current.playVideo();
-        if ('mediaSession' in navigator) {
-          navigator.mediaSession.playbackState = 'playing';
-        }
       } else {
         playerRef.current.pauseVideo();
-        if ('mediaSession' in navigator) {
-          navigator.mediaSession.playbackState = 'paused';
-        }
       }
     }
   }, [isPlaying]);
@@ -357,18 +317,8 @@ export function Player() {
                   </div>
                 )}
                 {showLyrics ? (
-                  <div className="flex-1 overflow-y-auto no-scrollbar pb-8 z-10">
-                    {lyrics ? (
-                      <div className="text-2xl font-bold leading-relaxed text-white/90 space-y-6 text-center px-4">
-                        {lyrics.map((line, i) => (
-                          <p key={i} className="whitespace-pre-wrap drop-shadow-lg">{line.text}</p>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-white/50 text-lg">
-                        Lyrics not available
-                      </div>
-                    )}
+                  <div className="flex-1 pb-8 z-10">
+                    <LyricsClient track={currentTrack} />
                   </div>
                 ) : (
                   <AnimatePresence mode="wait">
