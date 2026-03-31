@@ -157,5 +157,3 @@ export default function LyricsClient({ track, currentTime, isPlaying }: LyricsCl
         )}
       </motion.div>
     </AnimatePresence>
-  );
-}
